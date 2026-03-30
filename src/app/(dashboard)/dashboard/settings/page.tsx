@@ -1,118 +1,145 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useToast } from "@/components/ui/toast";
-import { Save, Palette, Shield } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
+import { Tabs } from "@/components/ui/tabs";
+import { Avatar } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+
+const settingsTabs = [
+  { id: "profile", label: "Profile" },
+  { id: "appearance", label: "Appearance" },
+  { id: "company", label: "Company" },
+];
+
+const themeOptions = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+  { id: "system", label: "System" },
+];
+
+const accentColors = [
+  { name: "Teal", value: "#0D9488" },
+  { name: "Blue", value: "#3B82F6" },
+  { name: "Purple", value: "#8B5CF6" },
+  { name: "Rose", value: "#F43F5E" },
+  { name: "Amber", value: "#F59E0B" },
+  { name: "Green", value: "#22C55E" },
+];
 
 export default function SettingsPage() {
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    phone: "",
-  });
-
-  function handleSave() {
-    setSaving(true);
-    setTimeout(() => {
-      toast("Settings saved successfully!", "success");
-      setSaving(false);
-    }, 800);
-  }
+  const [activeTab, setActiveTab] = useState("profile");
+  const [theme, setTheme] = useState("system");
+  const [accent, setAccent] = useState("#0D9488");
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Manage your account preferences and application settings.
-        </p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Settings</h1>
+        <p className="text-sm text-slate-500">Manage your account and preferences</p>
       </div>
 
-      {/* Profile Settings */}
-      <Card>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="rounded-lg bg-navy-50 p-2 dark:bg-navy-900/30">
-            <Shield className="h-5 w-5 text-navy-600 dark:text-navy-300" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Profile</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Update your personal information</p>
-          </div>
-        </div>
+      <Tabs tabs={settingsTabs} activeTab={activeTab} onChange={setActiveTab} />
 
+      {activeTab === "profile" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Avatar name="Basha" size="xl" />
+              <div>
+                <Button variant="secondary" size="sm">Change Avatar</Button>
+                <p className="mt-1 text-xs text-slate-500">JPG, PNG or GIF. Max 2MB.</p>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="Name" defaultValue="Basha" />
+              <Input label="Email" type="email" defaultValue="basha@amazetech.net" />
+            </div>
+            <Input label="Phone" type="tel" defaultValue="+91 98765 43210" />
+            <div className="flex justify-end">
+              <Button size="sm">Save Changes</Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {activeTab === "appearance" && (
         <div className="space-y-4">
-          <Input
-            id="name"
-            label="Full Name"
-            placeholder="Your name"
-            value={profile.name}
-            onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-          />
-          <Input
-            id="email"
-            type="email"
-            label="Email Address"
-            placeholder="you@company.com"
-            value={profile.email}
-            onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
-          />
-          <Input
-            id="phone"
-            type="tel"
-            label="Phone Number"
-            placeholder="+1 (555) 000-0000"
-            value={profile.phone}
-            onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Theme</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <div className="flex gap-3">
+                {themeOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setTheme(opt.id)}
+                    className={cn(
+                      "flex-1 rounded-lg border-2 p-4 text-center text-sm font-medium transition-colors",
+                      theme === opt.id
+                        ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400"
+                        : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
 
-          <div className="flex justify-end pt-2">
-            <Button onClick={handleSave} isLoading={saving}>
-              <Save className="h-4 w-4" />
-              Save Changes
-            </Button>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Accent Color</CardTitle>
+            </CardHeader>
+            <CardBody>
+              <div className="flex flex-wrap gap-3">
+                {accentColors.map((color) => (
+                  <button
+                    key={color.value}
+                    onClick={() => setAccent(color.value)}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-full transition-transform",
+                      accent === color.value && "ring-2 ring-offset-2 ring-slate-900 scale-110 dark:ring-slate-100"
+                    )}
+                    style={{ backgroundColor: color.value }}
+                    aria-label={color.name}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </CardBody>
+          </Card>
         </div>
-      </Card>
+      )}
 
-      {/* Appearance */}
-      <Card>
-        <div className="mb-4 flex items-center gap-3">
-          <div className="rounded-lg bg-purple-50 p-2 dark:bg-purple-900/30">
-            <Palette className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">Appearance</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Customize the look and feel</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-          <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-white">Dark Mode</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Toggle between light and dark themes</p>
-          </div>
-          <ThemeToggle />
-        </div>
-      </Card>
-
-      {/* Danger Zone */}
-      <Card className="border-red-200 dark:border-red-900/50">
-        <h2 className="text-base font-semibold text-red-600 dark:text-red-400">Danger Zone</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Irreversible actions. Be careful.
-        </p>
-        <div className="mt-4">
-          <Button variant="danger" size="sm">
-            Delete Account
-          </Button>
-        </div>
-      </Card>
+      {activeTab === "company" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Company Settings</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <Input label="Company Name" defaultValue="Amaze Tech Solutions Pvt Ltd" />
+            <div>
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                Company Logo
+              </label>
+              <div className="mt-1.5 flex items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-8 dark:border-slate-700">
+                <p className="text-sm text-slate-400">Logo upload coming soon</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button size="sm">Save Changes</Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }

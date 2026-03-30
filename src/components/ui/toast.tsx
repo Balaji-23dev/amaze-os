@@ -1,47 +1,47 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CheckCircle, XCircle, AlertCircle, X } from "lucide-react";
 
-type ToastType = "success" | "error" | "info";
+type ToastVariant = "success" | "error" | "warning" | "info";
 
 interface Toast {
   id: string;
   message: string;
-  type: ToastType;
+  variant: ToastVariant;
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, variant?: ToastVariant) => void;
 }
 
-const ToastContext = createContext<ToastContextType | null>(null);
+const ToastContext = createContext<ToastContextType>({ toast: () => {} });
 
 export function useToast() {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error("useToast must be used within ToastProvider");
-  return context;
+  return useContext(ToastContext);
 }
 
-const icons = {
+const icons: Record<ToastVariant, typeof CheckCircle> = {
   success: CheckCircle,
-  error: XCircle,
-  info: AlertCircle,
+  error: AlertCircle,
+  warning: AlertTriangle,
+  info: Info,
 };
 
-const styles = {
-  success: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400",
-  error: "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400",
-  info: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
+const styles: Record<ToastVariant, string> = {
+  success: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  error: "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
+  warning: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  info: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
 };
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = useCallback((message: string, type: ToastType = "info") => {
+  const addToast = useCallback((message: string, variant: ToastVariant = "info") => {
     const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, variant }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
@@ -54,24 +54,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite">
         {toasts.map((t) => {
-          const Icon = icons[t.type];
+          const Icon = icons[t.variant];
           return (
             <div
               key={t.id}
               className={cn(
-                "flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg animate-in slide-in-from-right-full duration-300",
-                styles[t.type]
+                "flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm shadow-lg animate-in slide-in-from-right",
+                styles[t.variant]
               )}
+              role="alert"
             >
-              <Icon className="h-5 w-5 shrink-0" />
-              <p className="text-sm font-medium">{t.message}</p>
-              <button
-                onClick={() => removeToast(t.id)}
-                className="ml-2 shrink-0 rounded-md p-1 opacity-70 hover:opacity-100"
-              >
-                <X className="h-4 w-4" />
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{t.message}</span>
+              <button onClick={() => removeToast(t.id)} className="shrink-0 opacity-60 hover:opacity-100">
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           );

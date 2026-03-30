@@ -1,9 +1,7 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
-import { formatDate } from "@/lib/utils";
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Users,
   UserCheck,
@@ -11,223 +9,224 @@ import {
   FileText,
   UserPlus,
   ArrowRight,
-  TrendingUp,
-  Clock,
+  Cake,
+  Award,
 } from "lucide-react";
-import Link from "next/link";
+import { StatCard } from "@/components/ui/stat-card";
+import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getGreeting } from "@/lib/utils";
 
-async function getStats() {
-  const [totalEmployees, activeEmployees, departmentCount, recentEmployees] =
-    await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { status: "ACTIVE" } }),
-      prisma.department.count(),
-      prisma.user.findMany({
-        take: 5,
-        orderBy: { createdAt: "desc" },
-        include: { department: true },
-      }),
-    ]);
-
-  return {
-    totalEmployees,
-    activeEmployees,
-    departmentCount,
-    openRequests: 3, // Placeholder
-    recentEmployees,
-  };
+interface DashboardStats {
+  totalEmployees: number;
+  activeToday: number;
+  departments: number;
+  openRequests: number;
 }
 
-export default async function DashboardPage() {
-  const session = await auth();
-  const stats = await getStats();
+interface RecentActivity {
+  id: string;
+  message: string;
+  time: string;
+  userName: string;
+}
 
-  const statCards = [
-    {
-      label: "Total Employees",
-      value: stats.totalEmployees,
-      icon: Users,
-      color: "text-navy-600 dark:text-navy-300",
-      bg: "bg-navy-50 dark:bg-navy-900/30",
-      trend: "+12%",
-    },
-    {
-      label: "Active",
-      value: stats.activeEmployees,
-      icon: UserCheck,
-      color: "text-teal-600 dark:text-teal-400",
-      bg: "bg-teal-50 dark:bg-teal-900/30",
-      trend: "+5%",
-    },
-    {
-      label: "Departments",
-      value: stats.departmentCount,
-      icon: Building2,
-      color: "text-purple-600 dark:text-purple-400",
-      bg: "bg-purple-50 dark:bg-purple-900/30",
-      trend: null,
-    },
-    {
-      label: "Open Requests",
-      value: stats.openRequests,
-      icon: FileText,
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-900/30",
-      trend: "-2",
-    },
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [empRes, deptRes] = await Promise.all([
+          fetch("/api/employees"),
+          fetch("/api/departments"),
+        ]);
+        const empData = await empRes.json();
+        const deptData = await deptRes.json();
+
+        const employees = empData.employees || [];
+        const departments = deptData.departments || [];
+
+        setStats({
+          totalEmployees: employees.length,
+          activeToday: employees.filter((e: { status: string }) => e.status === "ACTIVE").length,
+          departments: departments.length,
+          openRequests: 3,
+        });
+      } catch {
+        setStats({
+          totalEmployees: 0,
+          activeToday: 0,
+          departments: 0,
+          openRequests: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const recentActivity: RecentActivity[] = [
+    { id: "1", message: "joined TMS Operations", time: "2 hours ago", userName: "Rahul Kumar" },
+    { id: "2", message: "updated department info", time: "4 hours ago", userName: "Priya Sharma" },
+    { id: "3", message: "marked attendance", time: "5 hours ago", userName: "Arjun Patel" },
+    { id: "4", message: "joined Medical Billing & RCM", time: "1 day ago", userName: "Sneha Reddy" },
+    { id: "5", message: "completed onboarding", time: "2 days ago", userName: "Vikram Singh" },
   ];
 
-  const quickActions = [
-    {
-      label: "Add Employee",
-      href: "/dashboard/people/new",
-      icon: UserPlus,
-      description: "Onboard a new team member",
-    },
-    {
-      label: "View People",
-      href: "/dashboard/people",
-      icon: Users,
-      description: "Browse the employee directory",
-    },
-    {
-      label: "Departments",
-      href: "/dashboard/departments",
-      icon: Building2,
-      description: "Manage team structure",
-    },
+  const upcomingBirthdays = [
+    { name: "Priya Sharma", date: "Apr 2", department: "HR" },
+    { name: "Arjun Patel", date: "Apr 5", department: "TMS" },
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Welcome */}
+    <div className="space-y-6">
+      {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Welcome back, {session?.user?.name?.split(" ")[0]} 👋
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          {getGreeting()}, Basha
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Here&apos;s what&apos;s happening with your team today.
+        <p className="text-sm text-slate-500">
+          Here&apos;s what&apos;s happening at Amaze Tech today
         </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.label} className="relative overflow-hidden">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    {stat.label}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                    {stat.value}
-                  </p>
-                  {stat.trend && (
-                    <div className="mt-1 flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-teal-500" />
-                      <span className="text-xs font-medium text-teal-600 dark:text-teal-400">
-                        {stat.trend}
-                      </span>
-                      <span className="text-xs text-slate-400">vs last month</span>
-                    </div>
-                  )}
-                </div>
-                <div className={`rounded-lg p-2.5 ${stat.bg}`}>
-                  <Icon className={`h-5 w-5 ${stat.color}`} />
-                </div>
-              </div>
-            </Card>
-          );
-        })}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
+          ))
+        ) : stats ? (
+          <>
+            <StatCard
+              label="Total Employees"
+              value={stats.totalEmployees}
+              trend={{ value: 12, positive: true }}
+              icon={<Users className="h-5 w-5" />}
+            />
+            <StatCard
+              label="Active Today"
+              value={stats.activeToday}
+              trend={{ value: 5, positive: true }}
+              icon={<UserCheck className="h-5 w-5" />}
+            />
+            <StatCard
+              label="Departments"
+              value={stats.departments}
+              icon={<Building2 className="h-5 w-5" />}
+            />
+            <StatCard
+              label="Open Requests"
+              value={stats.openRequests}
+              icon={<FileText className="h-5 w-5" />}
+            />
+          </>
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-2">
+        <Link href="/dashboard/people/new">
+          <Button size="sm" variant="secondary">
+            <UserPlus className="h-3.5 w-3.5" />
+            Add Employee
+          </Button>
+        </Link>
+        <Link href="/dashboard/people">
+          <Button size="sm" variant="secondary">
+            <Users className="h-3.5 w-3.5" />
+            View Directory
+          </Button>
+        </Link>
+        <Link href="/dashboard/departments">
+          <Button size="sm" variant="secondary">
+            <Building2 className="h-3.5 w-3.5" />
+            Manage Departments
+          </Button>
+        </Link>
+      </div>
+
+      {/* Activity + Upcoming */}
+      <div className="grid gap-4 lg:grid-cols-3">
         {/* Recent Activity */}
         <Card className="lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Recent Employees
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Latest additions to your team
-              </p>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <Button variant="ghost" size="sm">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
+          <CardBody className="p-0">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center gap-3 px-5 py-3">
+                  <Avatar name={activity.userName} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">
+                        {activity.userName}
+                      </span>{" "}
+                      {activity.message}
+                    </p>
+                    <p className="text-xs text-slate-400">{activity.time}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <Link
-              href="/dashboard/people"
-              className="flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 transition-colors"
-            >
-              View all
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {stats.recentEmployees.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-400">
-                No employees yet. Add your first team member!
-              </p>
-            ) : (
-              stats.recentEmployees.map((emp) => (
-                <Link
-                  key={emp.id}
-                  href={`/dashboard/people/${emp.id}`}
-                  className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                >
-                  <Avatar name={emp.name} src={emp.avatar} size="md" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                      {emp.name}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {emp.title || emp.role} · {emp.department?.name || "Unassigned"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Clock className="h-3 w-3" />
-                    {formatDate(emp.createdAt)}
-                  </div>
-                  <Badge variant={emp.status === "ACTIVE" ? "success" : emp.status === "ON_LEAVE" ? "warning" : "danger"}>
-                    {emp.status === "ACTIVE" ? "Active" : emp.status === "ON_LEAVE" ? "On Leave" : "Inactive"}
-                  </Badge>
-                </Link>
-              ))
-            )}
-          </div>
+          </CardBody>
         </Card>
 
-        {/* Quick Actions */}
-        <Card>
-          <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
-            Quick Actions
-          </h2>
-          <div className="space-y-3">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={action.label}
-                  href={action.href}
-                  className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 transition-all duration-200 hover:border-teal-200 hover:bg-teal-50/50 dark:border-slate-700 dark:hover:border-teal-800 dark:hover:bg-teal-900/10"
-                >
-                  <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                    <Icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+        {/* Upcoming */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <span className="inline-flex items-center gap-1.5">
+                  <Cake className="h-4 w-4 text-pink-500" />
+                  Birthdays This Week
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardBody className="p-0">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {upcomingBirthdays.map((b, i) => (
+                  <div key={i} className="flex items-center justify-between px-5 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={b.name} size="sm" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{b.name}</p>
+                        <p className="text-xs text-slate-500">{b.department}</p>
+                      </div>
+                    </div>
+                    <Badge>{b.date}</Badge>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">
-                      {action.label}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {action.description}
-                    </p>
-                  </div>
-                  <ArrowRight className="ml-auto h-4 w-4 text-slate-400" />
-                </Link>
-              );
-            })}
-          </div>
-        </Card>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <span className="inline-flex items-center gap-1.5">
+                  <Award className="h-4 w-4 text-amber-500" />
+                  Work Anniversaries
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardBody>
+              <p className="text-center text-sm text-slate-400 py-4">
+                No anniversaries this week
+              </p>
+            </CardBody>
+          </Card>
+        </div>
       </div>
     </div>
   );

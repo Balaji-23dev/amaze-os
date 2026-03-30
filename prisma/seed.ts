@@ -1,10 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { hash } from "bcryptjs";
-import path from "path";
+import bcrypt from "bcryptjs";
 
-const dbPath = path.resolve(process.cwd(), "dev.db");
-const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
+const adapter = new PrismaLibSql({ url: "file:./dev.db" });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
@@ -19,167 +17,260 @@ async function main() {
     prisma.department.create({
       data: {
         name: "TMS Operations",
-        description: "Transport Management System operations and support",
+        description: "Transport Management System operations, logistics coordination, and carrier management",
+        color: "#0D9488",
+        icon: "truck",
+      },
+    }),
+    prisma.department.create({
+      data: {
+        name: "Medical Billing & RCM",
+        description: "Revenue Cycle Management, medical coding, claims processing, and billing operations",
         color: "#3B82F6",
+        icon: "stethoscope",
       },
     }),
     prisma.department.create({
       data: {
-        name: "Medical Billing",
-        description: "Healthcare billing and claims processing",
-        color: "#F43F5E",
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: "Administration",
-        description: "General administration and office management",
+        name: "Human Resources",
+        description: "Talent acquisition, employee relations, payroll, and organizational development",
         color: "#8B5CF6",
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: "HR",
-        description: "Human resources and people operations",
-        color: "#14B8A6",
-      },
-    }),
-    prisma.department.create({
-      data: {
-        name: "IT",
-        description: "Information technology and infrastructure",
-        color: "#06B6D4",
+        icon: "users",
       },
     }),
     prisma.department.create({
       data: {
         name: "Finance",
-        description: "Financial planning, accounting, and budgeting",
+        description: "Financial planning, accounting, budgeting, and revenue management",
         color: "#F59E0B",
+        icon: "indian-rupee",
+      },
+    }),
+    prisma.department.create({
+      data: {
+        name: "IT & Technology",
+        description: "Infrastructure management, software development, and technical support",
+        color: "#EF4444",
+        icon: "monitor",
+      },
+    }),
+    prisma.department.create({
+      data: {
+        name: "Administration",
+        description: "Office management, facilities, procurement, and general administration",
+        color: "#64748B",
+        icon: "building",
       },
     }),
   ]);
 
-  const [tmsOps, medBilling, admin, hr, it, finance] = departments;
+  const [tms, rcm, hr, finance, it, admin] = departments;
 
-  console.log(`✅ Created ${departments.length} departments`);
+  const password = await bcrypt.hash("admin123", 10);
+  const empPassword = await bcrypt.hash("welcome123", 10);
 
-  // Create admin user
-  const adminPassword = await hash("admin123", 12);
+  // Create admin (Basha)
   const basha = await prisma.user.create({
     data: {
-      name: "Basha Ahmed",
+      name: "Basha",
       email: "basha@amazetech.net",
-      password: adminPassword,
+      password,
       role: "ADMIN",
-      title: "CEO & Founder",
+      title: "Founder & CEO",
       departmentId: admin.id,
       status: "ACTIVE",
-      startDate: new Date("2022-01-15"),
-      phone: "+1 (555) 100-0001",
+      phone: "+91 98765 43210",
+      employeeId: "AMZ-0001",
+      startDate: new Date("2023-01-01"),
+      employmentType: "FULL_TIME",
+      dateOfBirth: new Date("1990-05-15"),
+      address: "Hyderabad, Telangana, India",
+      emergencyContactName: "Ahmed",
+      emergencyContactPhone: "+91 98765 43211",
+      emergencyContactRelation: "Brother",
     },
   });
 
-  console.log("✅ Created admin user: basha@amazetech.net / admin123");
-
-  // Create sample employees
-  const defaultPassword = await hash("welcome123", 12);
-
-  const employees = [
-    {
-      name: "Priya Sharma",
-      email: "priya@amazetech.net",
+  // Create managers
+  const rahul = await prisma.user.create({
+    data: {
+      name: "Rahul Kumar",
+      email: "rahul@amazetech.net",
+      password: empPassword,
       role: "MANAGER",
       title: "TMS Operations Manager",
-      departmentId: tmsOps.id,
-      phone: "+1 (555) 200-0001",
-      startDate: new Date("2022-06-01"),
+      departmentId: tms.id,
+      status: "ACTIVE",
+      phone: "+91 87654 32100",
+      employeeId: "AMZ-0002",
+      startDate: new Date("2023-03-15"),
+      employmentType: "FULL_TIME",
       managerId: basha.id,
+      dateOfBirth: new Date("1988-11-20"),
+      address: "Chennai, Tamil Nadu, India",
     },
-    {
-      name: "Raj Patel",
-      email: "raj@amazetech.net",
-      role: "EMPLOYEE",
-      title: "Senior TMS Analyst",
-      departmentId: tmsOps.id,
-      phone: "+1 (555) 200-0002",
-      startDate: new Date("2023-02-15"),
-    },
-    {
-      name: "Sarah Johnson",
-      email: "sarah@amazetech.net",
+  });
+
+  const priya = await prisma.user.create({
+    data: {
+      name: "Priya Sharma",
+      email: "priya@amazetech.net",
+      password: empPassword,
       role: "MANAGER",
-      title: "Medical Billing Lead",
-      departmentId: medBilling.id,
-      phone: "+1 (555) 300-0001",
-      startDate: new Date("2022-09-01"),
+      title: "RCM Team Lead",
+      departmentId: rcm.id,
+      status: "ACTIVE",
+      phone: "+91 76543 21000",
+      employeeId: "AMZ-0003",
+      startDate: new Date("2023-06-01"),
+      employmentType: "FULL_TIME",
       managerId: basha.id,
+      dateOfBirth: new Date("1992-04-02"),
+      address: "Bangalore, Karnataka, India",
     },
-    {
-      name: "Amit Kumar",
-      email: "amit@amazetech.net",
-      role: "EMPLOYEE",
-      title: "IT Engineer",
-      departmentId: it.id,
-      phone: "+1 (555) 400-0001",
-      startDate: new Date("2023-05-10"),
-    },
-    {
-      name: "Fatima Ali",
-      email: "fatima@amazetech.net",
-      role: "EMPLOYEE",
-      title: "HR Coordinator",
+  });
+
+  const meera = await prisma.user.create({
+    data: {
+      name: "Meera Nair",
+      email: "meera@amazetech.net",
+      password: empPassword,
+      role: "MANAGER",
+      title: "HR Manager",
       departmentId: hr.id,
-      phone: "+1 (555) 500-0001",
-      startDate: new Date("2023-08-20"),
+      status: "ACTIVE",
+      phone: "+91 65432 10000",
+      employeeId: "AMZ-0004",
+      startDate: new Date("2023-08-15"),
+      employmentType: "FULL_TIME",
+      managerId: basha.id,
+      dateOfBirth: new Date("1991-09-14"),
+      address: "Kochi, Kerala, India",
+    },
+  });
+
+  // Create employees
+  const employees = [
+    {
+      name: "Arjun Patel",
+      email: "arjun@amazetech.net",
+      title: "TMS Coordinator",
+      departmentId: tms.id,
+      managerId: rahul.id,
+      employeeId: "AMZ-0005",
+      startDate: new Date("2024-01-10"),
+      phone: "+91 91234 56780",
+      dateOfBirth: new Date("1995-04-05"),
+      address: "Ahmedabad, Gujarat, India",
     },
     {
-      name: "Michael Chen",
-      email: "michael@amazetech.net",
-      role: "EMPLOYEE",
+      name: "Sneha Reddy",
+      email: "sneha@amazetech.net",
+      title: "Medical Coding Specialist",
+      departmentId: rcm.id,
+      managerId: priya.id,
+      employeeId: "AMZ-0006",
+      startDate: new Date("2024-02-01"),
+      phone: "+91 81234 56780",
+      dateOfBirth: new Date("1996-07-18"),
+      address: "Hyderabad, Telangana, India",
+    },
+    {
+      name: "Vikram Singh",
+      email: "vikram@amazetech.net",
+      title: "Logistics Analyst",
+      departmentId: tms.id,
+      managerId: rahul.id,
+      employeeId: "AMZ-0007",
+      startDate: new Date("2024-03-15"),
+      phone: "+91 71234 56780",
+      dateOfBirth: new Date("1993-12-25"),
+      address: "Delhi, India",
+    },
+    {
+      name: "Anjali Desai",
+      email: "anjali@amazetech.net",
+      title: "Claims Processor",
+      departmentId: rcm.id,
+      managerId: priya.id,
+      employeeId: "AMZ-0008",
+      startDate: new Date("2024-04-01"),
+      phone: "+91 61234 56780",
+      dateOfBirth: new Date("1997-02-28"),
+      address: "Mumbai, Maharashtra, India",
+    },
+    {
+      name: "Karthik Menon",
+      email: "karthik@amazetech.net",
+      title: "Software Developer",
+      departmentId: it.id,
+      managerId: basha.id,
+      employeeId: "AMZ-0009",
+      startDate: new Date("2024-05-20"),
+      phone: "+91 51234 56780",
+      dateOfBirth: new Date("1994-08-10"),
+      address: "Trivandrum, Kerala, India",
+    },
+    {
+      name: "Divya Rao",
+      email: "divya@amazetech.net",
       title: "Financial Analyst",
       departmentId: finance.id,
-      phone: "+1 (555) 600-0001",
-      startDate: new Date("2024-01-08"),
+      managerId: basha.id,
+      employeeId: "AMZ-0010",
+      startDate: new Date("2024-06-15"),
+      phone: "+91 41234 56780",
+      dateOfBirth: new Date("1995-11-03"),
+      address: "Pune, Maharashtra, India",
     },
     {
-      name: "Aisha Mohammed",
-      email: "aisha@amazetech.net",
-      role: "EMPLOYEE",
-      title: "Billing Specialist",
-      departmentId: medBilling.id,
-      phone: "+1 (555) 300-0002",
-      startDate: new Date("2024-03-15"),
+      name: "Suresh Babu",
+      email: "suresh@amazetech.net",
+      title: "HR Coordinator",
+      departmentId: hr.id,
+      managerId: meera.id,
+      employeeId: "AMZ-0011",
+      startDate: new Date("2024-07-01"),
+      phone: "+91 31234 56780",
       status: "ON_LEAVE",
+      dateOfBirth: new Date("1996-06-22"),
+      address: "Vizag, Andhra Pradesh, India",
+    },
+    {
+      name: "Lakshmi Iyer",
+      email: "lakshmi@amazetech.net",
+      title: "Office Administrator",
+      departmentId: admin.id,
+      managerId: basha.id,
+      employeeId: "AMZ-0012",
+      startDate: new Date("2024-08-10"),
+      phone: "+91 21234 56780",
+      dateOfBirth: new Date("1993-01-15"),
+      address: "Coimbatore, Tamil Nadu, India",
     },
   ];
 
   for (const emp of employees) {
-    const managerId = emp.managerId || (emp.role === "EMPLOYEE" ? basha.id : null);
     await prisma.user.create({
       data: {
-        name: emp.name,
-        email: emp.email,
-        password: defaultPassword,
-        role: emp.role,
-        title: emp.title,
-        departmentId: emp.departmentId,
-        phone: emp.phone,
-        startDate: emp.startDate,
-        managerId,
-        status: (emp as Record<string, unknown>).status as string || "ACTIVE",
+        ...emp,
+        password: empPassword,
+        role: "EMPLOYEE",
+        status: emp.status || "ACTIVE",
+        employmentType: "FULL_TIME",
       },
     });
   }
 
-  console.log(`✅ Created ${employees.length} sample employees`);
-  console.log("\n🎉 Database seeded successfully!");
-  console.log("   Login: basha@amazetech.net / admin123");
+  console.log("✅ Seeded:");
+  console.log(`   - ${departments.length} departments`);
+  console.log(`   - 12 employees (1 admin, 3 managers, 8 employees)`);
+  console.log(`   - Admin login: basha@amazetech.net / admin123`);
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed failed:", e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

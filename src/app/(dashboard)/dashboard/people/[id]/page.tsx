@@ -1,271 +1,243 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Pencil,
+  UserX,
+  MoreHorizontal,
   Mail,
   Phone,
-  Building2,
-  Calendar,
   MapPin,
-  Edit,
+  Calendar,
   Briefcase,
+  Shield,
+  Heart,
   FileText,
   Clock,
   StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Badge, StatusBadge, RoleBadge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
+import { Tabs } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatDate, type Role, type EmployeeStatus, roleColors, statusColors, statusLabels } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
-interface Employee {
+interface EmployeeDetail {
   id: string;
   name: string;
   email: string;
-  avatar: string | null;
   phone: string | null;
-  role: string;
   title: string | null;
+  role: string;
   status: string;
+  avatar: string | null;
+  dateOfBirth: string | null;
+  address: string | null;
+  employeeId: string | null;
+  employmentType: string | null;
   startDate: string | null;
-  department: { id: string; name: string } | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelation: string | null;
+  department: { id: string; name: string; color: string | null } | null;
   manager: { id: string; name: string } | null;
-  reports: { id: string; name: string; avatar: string | null; title: string | null; role: string }[];
-  createdAt: string;
+  reports: { id: string; name: string; title: string | null }[];
 }
 
-const tabs = [
-  { id: "overview", label: "Overview", icon: Briefcase },
-  { id: "documents", label: "Documents", icon: FileText },
-  { id: "attendance", label: "Attendance", icon: Clock },
-  { id: "notes", label: "Notes", icon: StickyNote },
-] as const;
+function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex items-start gap-3 py-2">
+      <span className="mt-0.5 text-slate-400">{icon}</span>
+      <div>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-sm text-slate-900 dark:text-slate-100">{value || "—"}</p>
+      </div>
+    </div>
+  );
+}
 
-type TabId = (typeof tabs)[number]["id"];
-
-export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function EmployeeProfilePage() {
+  const params = useParams();
   const router = useRouter();
-  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
-    async function fetchEmployee() {
+    async function load() {
       try {
-        const res = await fetch(`/api/employees/${id}`);
+        const res = await fetch(`/api/employees/${params.id}`);
         if (!res.ok) throw new Error("Not found");
         const data = await res.json();
-        setEmployee(data.employee);
+        setEmployee(data);
       } catch {
-        router.push("/dashboard/people");
+        setEmployee(null);
       } finally {
         setLoading(false);
       }
     }
-    fetchEmployee();
-  }, [id, router]);
+    load();
+  }, [params.id]);
 
   if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="flex items-center gap-6">
-          <Skeleton className="h-20 w-20 rounded-full" />
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-64" />
-            <Skeleton className="h-4 w-40" />
+        <div className="flex gap-4">
+          <Skeleton className="h-16 w-16 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-60" />
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Skeleton className="h-48" />
-          <Skeleton className="h-48" />
-        </div>
+        <Skeleton className="h-64 rounded-lg" />
       </div>
     );
   }
 
-  if (!employee) return null;
+  if (!employee) {
+    return (
+      <div className="flex flex-col items-center py-20">
+        <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">Employee not found</p>
+        <Link href="/dashboard/people">
+          <Button variant="secondary" className="mt-4">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Directory
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: "overview", label: "Overview" },
+    { id: "documents", label: "Documents" },
+    { id: "attendance", label: "Attendance" },
+    { id: "notes", label: "Notes" },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Back button */}
+      {/* Back */}
       <Link
         href="/dashboard/people"
-        className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-3.5 w-3.5" />
         Back to People
       </Link>
 
-      {/* Profile header */}
-      <Card className="relative overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-r from-navy-600 to-teal-600" />
-        <div className="relative pt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-end gap-4">
-            <Avatar name={employee.name} src={employee.avatar} size="xl" className="ring-4 ring-white dark:ring-slate-900" />
-            <div className="pb-1">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                {employee.name}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {employee.title || employee.role} · {employee.department?.name || "Unassigned"}
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", roleColors[employee.role as Role])}>
-                  {employee.role}
-                </span>
-                <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", statusColors[employee.status as EmployeeStatus])}>
-                  {statusLabels[employee.status as EmployeeStatus] || employee.status}
-                </span>
-              </div>
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <Avatar name={employee.name} src={employee.avatar} size="xl" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              {employee.name}
+            </h1>
+            <p className="text-sm text-slate-500">{employee.title || "No title"}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {employee.department && (
+                <Badge variant="department">{employee.department.name}</Badge>
+              )}
+              <StatusBadge status={employee.status} />
+              <RoleBadge role={employee.role} />
             </div>
           </div>
-          <Button variant="outline" size="sm">
-            <Edit className="h-4 w-4" />
-            Edit Profile
-          </Button>
         </div>
-      </Card>
 
-      {/* Tabs */}
-      <div className="border-b border-slate-200 dark:border-slate-800">
-        <nav className="flex gap-6">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-                  activeTab === tab.id
-                    ? "border-teal-500 text-teal-600 dark:text-teal-400"
-                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm">
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Button>
+          <DropdownMenu
+            trigger={
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            }
+          >
+            <DropdownItem icon={<UserX className="h-3.5 w-3.5" />} destructive>
+              Deactivate
+            </DropdownItem>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* Tab content */}
+      {/* Tabs */}
+      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+
+      {/* Tab Content */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Contact Info */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-              Contact Information
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                  <Mail className="h-4 w-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
-                  <p className="text-sm text-slate-900 dark:text-white">{employee.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                  <Phone className="h-4 w-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Phone</p>
-                  <p className="text-sm text-slate-900 dark:text-white">{employee.phone || "—"}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                  <Building2 className="h-4 w-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Department</p>
-                  <p className="text-sm text-slate-900 dark:text-white">{employee.department?.name || "—"}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
-                  <Calendar className="h-4 w-4 text-slate-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Start Date</p>
-                  <p className="text-sm text-slate-900 dark:text-white">{formatDate(employee.startDate)}</p>
-                </div>
-              </div>
-            </div>
+            <CardHeader>
+              <CardTitle>Personal Information</CardTitle>
+            </CardHeader>
+            <CardBody className="space-y-1">
+              <InfoRow icon={<Mail className="h-4 w-4" />} label="Email" value={employee.email} />
+              <InfoRow icon={<Phone className="h-4 w-4" />} label="Phone" value={employee.phone} />
+              <InfoRow icon={<Calendar className="h-4 w-4" />} label="Date of Birth" value={employee.dateOfBirth ? formatDate(employee.dateOfBirth) : null} />
+              <InfoRow icon={<MapPin className="h-4 w-4" />} label="Address" value={employee.address} />
+            </CardBody>
           </Card>
 
-          {/* Employment Details */}
           <Card>
-            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-              Employment Details
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-500 dark:text-slate-400">Role</span>
-                <Badge>{employee.role}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-500 dark:text-slate-400">Title</span>
-                <span className="text-sm font-medium text-slate-900 dark:text-white">{employee.title || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>
-                <Badge variant={employee.status === "ACTIVE" ? "success" : employee.status === "ON_LEAVE" ? "warning" : "danger"}>
-                  {statusLabels[employee.status as EmployeeStatus] || employee.status}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-500 dark:text-slate-400">Manager</span>
-                {employee.manager ? (
-                  <Link
-                    href={`/dashboard/people/${employee.manager.id}`}
-                    className="text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400"
-                  >
-                    {employee.manager.name}
-                  </Link>
-                ) : (
-                  <span className="text-sm text-slate-400">—</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-500 dark:text-slate-400">Member since</span>
-                <span className="text-sm text-slate-900 dark:text-white">{formatDate(employee.createdAt)}</span>
-              </div>
-            </div>
+            <CardHeader>
+              <CardTitle>Employment Details</CardTitle>
+            </CardHeader>
+            <CardBody className="space-y-1">
+              <InfoRow icon={<Shield className="h-4 w-4" />} label="Employee ID" value={employee.employeeId} />
+              <InfoRow icon={<Briefcase className="h-4 w-4" />} label="Department" value={employee.department?.name} />
+              <InfoRow icon={<Briefcase className="h-4 w-4" />} label="Title" value={employee.title} />
+              <InfoRow icon={<Calendar className="h-4 w-4" />} label="Start Date" value={employee.startDate ? formatDate(employee.startDate) : null} />
+              <InfoRow icon={<Briefcase className="h-4 w-4" />} label="Employment Type" value={employee.employmentType?.replace("_", " ")} />
+              {employee.manager && (
+                <InfoRow icon={<Briefcase className="h-4 w-4" />} label="Manager" value={employee.manager.name} />
+              )}
+            </CardBody>
           </Card>
 
-          {/* Direct Reports */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Emergency Contact</CardTitle>
+            </CardHeader>
+            <CardBody className="space-y-1">
+              <InfoRow icon={<Heart className="h-4 w-4" />} label="Name" value={employee.emergencyContactName} />
+              <InfoRow icon={<Phone className="h-4 w-4" />} label="Phone" value={employee.emergencyContactPhone} />
+              <InfoRow icon={<Heart className="h-4 w-4" />} label="Relationship" value={employee.emergencyContactRelation} />
+            </CardBody>
+          </Card>
+
           {employee.reports.length > 0 && (
-            <Card className="md:col-span-2">
-              <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-                Direct Reports ({employee.reports.length})
-              </h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {employee.reports.map((report) => (
-                  <Link
-                    key={report.id}
-                    href={`/dashboard/people/${report.id}`}
-                    className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 transition-colors hover:border-teal-200 hover:bg-teal-50/50 dark:border-slate-700 dark:hover:border-teal-800 dark:hover:bg-teal-900/10"
-                  >
-                    <Avatar name={report.name} src={report.avatar} size="sm" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">{report.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{report.title || report.role}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Direct Reports ({employee.reports.length})</CardTitle>
+              </CardHeader>
+              <CardBody className="p-0">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {employee.reports.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={`/dashboard/people/${r.id}`}
+                      className="flex items-center gap-2.5 px-5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
+                      <Avatar name={r.name} size="sm" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{r.name}</p>
+                        <p className="text-xs text-slate-500">{r.title || "—"}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardBody>
             </Card>
           )}
         </div>
@@ -273,43 +245,37 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
       {activeTab === "documents" && (
         <Card>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
-              <FileText className="h-8 w-8 text-slate-400" />
+          <CardBody>
+            <div className="flex flex-col items-center py-8 text-center">
+              <FileText className="h-8 w-8 text-slate-300" />
+              <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">No documents yet</p>
+              <p className="text-xs text-slate-500">Documents will appear here once uploaded</p>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">No documents yet</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Document management is coming soon.
-            </p>
-          </div>
+          </CardBody>
         </Card>
       )}
 
       {activeTab === "attendance" && (
         <Card>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
-              <Clock className="h-8 w-8 text-slate-400" />
+          <CardBody>
+            <div className="flex flex-col items-center py-8 text-center">
+              <Clock className="h-8 w-8 text-slate-300" />
+              <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">Attendance tracking coming soon</p>
+              <p className="text-xs text-slate-500">This feature is under development</p>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">Attendance tracking</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Attendance records will appear here once enabled.
-            </p>
-          </div>
+          </CardBody>
         </Card>
       )}
 
       {activeTab === "notes" && (
         <Card>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
-              <StickyNote className="h-8 w-8 text-slate-400" />
+          <CardBody>
+            <div className="flex flex-col items-center py-8 text-center">
+              <StickyNote className="h-8 w-8 text-slate-300" />
+              <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">No notes yet</p>
+              <p className="text-xs text-slate-500">Add notes about this employee</p>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">No notes yet</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Notes and annotations will be available soon.
-            </p>
-          </div>
+          </CardBody>
         </Card>
       )}
     </div>

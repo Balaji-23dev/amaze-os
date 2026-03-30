@@ -14,33 +14,23 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+export function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "—";
-  const d = new Date(date);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("en-IN", {
     day: "numeric",
+    month: "short",
     year: "numeric",
   });
 }
 
-export type Role = "ADMIN" | "MANAGER" | "EMPLOYEE";
-export type EmployeeStatus = "ACTIVE" | "ON_LEAVE" | "INACTIVE";
-
-export const roleColors: Record<Role, string> = {
-  ADMIN: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-  MANAGER: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
-  EMPLOYEE: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-};
-
-export const statusColors: Record<EmployeeStatus, string> = {
-  ACTIVE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-  ON_LEAVE: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
-  INACTIVE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-};
-
-export const statusLabels: Record<EmployeeStatus, string> = {
-  ACTIVE: "Active",
-  ON_LEAVE: "On Leave",
-  INACTIVE: "Inactive",
-};
+export function generateEmployeeId(index: number): string {
+  return `AMZ-${String(index).padStart(4, "0")}`;
+}

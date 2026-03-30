@@ -3,79 +3,106 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { Select, type SelectOption } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 
-interface Department {
-  id: string;
-  name: string;
-}
-
-interface Employee {
-  id: string;
-  name: string;
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  departmentId: string;
+  title: string;
+  role: string;
+  startDate: string;
+  managerId: string;
 }
 
 interface FormErrors {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
-  phone?: string;
   departmentId?: string;
-  role?: string;
   title?: string;
-  startDate?: string;
 }
 
-export default function AddEmployeePage() {
+interface DepartmentOption {
+  id: string;
+  name: string;
+}
+
+interface ManagerOption {
+  id: string;
+  name: string;
+}
+
+const roleOptions: SelectOption[] = [
+  { value: "EMPLOYEE", label: "Employee" },
+  { value: "MANAGER", label: "Manager" },
+  { value: "ADMIN", label: "Admin" },
+];
+
+export default function NewEmployeePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [managers, setManagers] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
-
-  const [form, setForm] = useState({
-    name: "",
+  const [departments, setDepartments] = useState<SelectOption[]>([]);
+  const [managers, setManagers] = useState<SelectOption[]>([]);
+  const [form, setForm] = useState<FormData>({
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     departmentId: "",
-    role: "EMPLOYEE",
     title: "",
-    startDate: "",
+    role: "EMPLOYEE",
+    startDate: new Date().toISOString().split("T")[0],
     managerId: "",
-    password: "welcome123",
   });
+  const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
-    async function fetchData() {
+    async function loadOptions() {
       try {
         const [deptRes, empRes] = await Promise.all([
           fetch("/api/departments"),
-          fetch("/api/employees?role=MANAGER&role=ADMIN"),
+          fetch("/api/employees"),
         ]);
         const deptData = await deptRes.json();
         const empData = await empRes.json();
-        setDepartments(deptData.departments || []);
-        setManagers(empData.employees || []);
+
+        setDepartments(
+          (deptData.departments || []).map((d: DepartmentOption) => ({
+            value: d.id,
+            label: d.name,
+          }))
+        );
+        setManagers(
+          (empData.employees || [])
+            .filter((e: { role: string }) => e.role === "MANAGER" || e.role === "ADMIN")
+            .map((e: ManagerOption) => ({
+              value: e.id,
+              label: e.name,
+            }))
+        );
       } catch {
-        console.error("Failed to fetch data");
+        // Silently fail, dropdowns will be empty
       }
     }
-    fetchData();
+    loadOptions();
   }, []);
 
   function validate(): boolean {
     const newErrors: FormErrors = {};
-    if (!form.name.trim()) newErrors.name = "Name is required";
+    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
     if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      newErrors.email = "Invalid email address";
-    if (form.phone && !/^[\d\s\-+()]*$/.test(form.phone))
-      newErrors.phone = "Invalid phone number";
-    if (!form.departmentId) newErrors.departmentId = "Department is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = "Invalid email address";
+    if (!form.title.trim()) newErrors.title = "Title is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -90,8 +117,13 @@ export default function AddEmployeePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
-          startDate: form.startDate || null,
+          name: `${form.firstName} ${form.lastName}`,
+          email: form.email,
+          phone: form.phone || null,
+          departmentId: form.departmentId || null,
+          title: form.title,
+          role: form.role,
+          startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
           managerId: form.managerId || null,
         }),
       });
@@ -102,7 +134,7 @@ export default function AddEmployeePage() {
         return;
       }
 
-      toast("Employee created successfully!", "success");
+      toast("Employee created successfully", "success");
       router.push("/dashboard/people");
     } catch {
       toast("Something went wrong", "error");
@@ -111,7 +143,7 @@ export default function AddEmployeePage() {
     }
   }
 
-  function updateField(field: string, value: string) {
+  function updateField(field: keyof FormData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -122,169 +154,134 @@ export default function AddEmployeePage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <Link
         href="/dashboard/people"
-        className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-3.5 w-3.5" />
         Back to People
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Add Employee
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Fill in the details to onboard a new team member.
-        </p>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Add Employee</h1>
+        <p className="text-sm text-slate-500">Create a new employee record</p>
       </div>
 
-      <Card>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Personal Information */}
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-              Personal Information
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Input
-                  id="name"
-                  label="Full Name *"
-                  placeholder="John Doe"
-                  value={form.name}
-                  onChange={(e) => updateField("name", e.target.value)}
-                  error={errors.name}
-                />
-              </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Personal Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                id="email"
+                label="First Name"
+                value={form.firstName}
+                onChange={(e) => updateField("firstName", e.target.value)}
+                error={errors.firstName}
+                placeholder="John"
+                required
+              />
+              <Input
+                label="Last Name"
+                value={form.lastName}
+                onChange={(e) => updateField("lastName", e.target.value)}
+                error={errors.lastName}
+                placeholder="Doe"
+                required
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="Email"
                 type="email"
-                label="Email Address *"
-                placeholder="john@amazetech.net"
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
                 error={errors.email}
+                placeholder="john@amazetech.net"
+                required
               />
               <Input
-                id="phone"
+                label="Phone"
                 type="tel"
-                label="Phone Number"
-                placeholder="+1 (555) 000-0000"
                 value={form.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
-                error={errors.phone}
+                placeholder="+91 98765 43210"
               />
             </div>
-          </div>
+          </CardBody>
+        </Card>
 
-          <hr className="border-slate-200 dark:border-slate-800" />
-
-          {/* Work Information */}
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-              Work Information
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Department *
-                </label>
-                <select
-                  value={form.departmentId}
-                  onChange={(e) => updateField("departmentId", e.target.value)}
-                  className={`block w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:bg-slate-800 dark:text-white ${
-                    errors.departmentId
-                      ? "border-red-300 dark:border-red-700"
-                      : "border-slate-300 dark:border-slate-700"
-                  }`}
-                >
-                  <option value="">Select department</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-                {errors.departmentId && (
-                  <p className="text-sm text-red-600 dark:text-red-400">{errors.departmentId}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Role
-                </label>
-                <select
-                  value={form.role}
-                  onChange={(e) => updateField("role", e.target.value)}
-                  className="block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="EMPLOYEE">Employee</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
-              </div>
-
+        {/* Employment Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Employment Details</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select
+                label="Department"
+                options={departments}
+                value={form.departmentId}
+                onChange={(v) => updateField("departmentId", v)}
+                placeholder="Select department"
+                searchable
+              />
               <Input
-                id="title"
-                label="Job Title"
-                placeholder="Software Engineer"
+                label="Title"
                 value={form.title}
                 onChange={(e) => updateField("title", e.target.value)}
+                error={errors.title}
+                placeholder="Software Engineer"
+                required
               />
-
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Select
+                label="Role"
+                options={roleOptions}
+                value={form.role}
+                onChange={(v) => updateField("role", v)}
+              />
               <Input
-                id="startDate"
-                type="date"
                 label="Start Date"
+                type="date"
                 value={form.startDate}
                 onChange={(e) => updateField("startDate", e.target.value)}
               />
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Manager
-                </label>
-                <select
-                  value={form.managerId}
-                  onChange={(e) => updateField("managerId", e.target.value)}
-                  className="block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">No manager</option>
-                  {managers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
             </div>
-          </div>
-
-          <hr className="border-slate-200 dark:border-slate-800" />
-
-          {/* Account */}
-          <div>
-            <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
-              Account
-            </h3>
-            <Input
-              id="password"
-              label="Initial Password"
-              value={form.password}
-              onChange={(e) => updateField("password", e.target.value)}
-              hint="The employee can change this after first login."
+            <Select
+              label="Manager"
+              options={managers}
+              value={form.managerId}
+              onChange={(v) => updateField("managerId", v)}
+              placeholder="Select manager (optional)"
+              searchable
             />
-          </div>
+          </CardBody>
+        </Card>
 
-          <div className="flex items-center justify-end gap-3 pt-4">
-            <Link href="/dashboard/people">
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </Link>
-            <Button type="submit" isLoading={loading}>
-              <UserPlus className="h-4 w-4" />
-              Add Employee
-            </Button>
-          </div>
-        </form>
-      </Card>
+        {/* Avatar placeholder */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Photo</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-slate-200 py-8 dark:border-slate-700">
+              <p className="text-sm text-slate-400">Avatar upload coming soon</p>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Actions */}
+        <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 py-4 dark:border-slate-800 dark:bg-slate-950">
+          <Link href="/dashboard/people">
+            <Button variant="secondary" type="button">Cancel</Button>
+          </Link>
+          <Button type="submit" loading={loading}>
+            Create Employee
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -1,263 +1,288 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Search, Plus, Filter, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  UserPlus,
+  LayoutGrid,
+  List,
+  MoreHorizontal,
+  Mail,
+  Eye,
+  Pencil,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { SearchInput } from "@/components/ui/search-input";
+import { Badge, StatusBadge, RoleBadge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Pagination,
+} from "@/components/ui/table";
+import { Card, CardBody } from "@/components/ui/card";
+import { DropdownMenu, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Users } from "lucide-react";
-import { cn, type Role, type EmployeeStatus, roleColors, statusColors, statusLabels } from "@/lib/utils";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface Employee {
   id: string;
   name: string;
   email: string;
-  avatar: string | null;
-  role: string;
   title: string | null;
+  role: string;
   status: string;
   phone: string | null;
-  department: { id: string; name: string } | null;
-}
-
-interface Department {
-  id: string;
-  name: string;
+  avatar: string | null;
+  department: { id: string; name: string; color: string | null } | null;
 }
 
 export default function PeoplePage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterDept, setFilterDept] = useState("");
-  const [filterRole, setFilterRole] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [view, setView] = useState<"table" | "grid">("table");
+  const [page, setPage] = useState(1);
+  const [departmentFilter, setDepartmentFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const pageSize = 10;
 
-  const fetchEmployees = useCallback(async () => {
+  const loadEmployees = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
-      if (filterDept) params.set("departmentId", filterDept);
-      if (filterRole) params.set("role", filterRole);
-      if (filterStatus) params.set("status", filterStatus);
-
+      if (departmentFilter) params.set("departmentId", departmentFilter);
+      if (statusFilter) params.set("status", statusFilter);
       const res = await fetch(`/api/employees?${params.toString()}`);
       const data = await res.json();
       setEmployees(data.employees || []);
     } catch {
-      console.error("Failed to fetch employees");
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
-  }, [search, filterDept, filterRole, filterStatus]);
+  }, [search, departmentFilter, statusFilter]);
 
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    loadEmployees();
+  }, [loadEmployees]);
 
-  useEffect(() => {
-    async function fetchDepartments() {
-      try {
-        const res = await fetch("/api/departments");
-        const data = await res.json();
-        setDepartments(data.departments || []);
-      } catch {
-        console.error("Failed to fetch departments");
-      }
-    }
-    fetchDepartments();
-  }, []);
+  const filtered = employees;
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            People
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Manage your team members and their information.
-          </p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">People</h1>
+          <p className="text-sm text-slate-500">{employees.length} employees</p>
         </div>
         <Link href="/dashboard/people/new">
-          <Button>
-            <Plus className="h-4 w-4" />
+          <Button size="sm">
+            <UserPlus className="h-3.5 w-3.5" />
             Add Employee
           </Button>
         </Link>
       </div>
 
-      {/* Search & Filters */}
-      <Card className="p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-            <ChevronDown className={cn("h-4 w-4 transition-transform", showFilters && "rotate-180")} />
-          </Button>
+      {/* Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchInput
+          placeholder="Search by name, email..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          onClear={() => {
+            setSearch("");
+            setPage(1);
+          }}
+          className="sm:max-w-xs"
+        />
+
+        <div className="flex items-center gap-2">
+          {/* Status filter chips */}
+          {["ACTIVE", "ON_LEAVE", "INACTIVE"].map((s) => (
+            <button
+              key={s}
+              onClick={() => {
+                setStatusFilter(statusFilter === s ? "" : s);
+                setPage(1);
+              }}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                statusFilter === s
+                  ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              )}
+            >
+              {s === "ON_LEAVE" ? "On Leave" : s.charAt(0) + s.slice(1).toLowerCase()}
+            </button>
+          ))}
         </div>
 
-        {showFilters && (
-          <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800 sm:grid-cols-3">
-            <select
-              value={filterDept}
-              onChange={(e) => setFilterDept(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              <option value="">All Departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              <option value="">All Roles</option>
-              <option value="ADMIN">Admin</option>
-              <option value="MANAGER">Manager</option>
-              <option value="EMPLOYEE">Employee</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              <option value="">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="ON_LEAVE">On Leave</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-          </div>
-        )}
-      </Card>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={() => setView("table")}
+            className={cn(
+              "rounded-md p-1.5 transition-colors",
+              view === "table"
+                ? "bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100"
+                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            )}
+            aria-label="Table view"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setView("grid")}
+            className={cn(
+              "rounded-md p-1.5 transition-colors",
+              view === "grid"
+                ? "bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100"
+                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            )}
+            aria-label="Grid view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-      {/* Employee Table */}
-      <Card className="overflow-hidden p-0">
-        {loading ? (
-          <div className="space-y-4 p-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-                <Skeleton className="h-6 w-20 rounded-full" />
-              </div>
+      {/* Content */}
+      {loading ? (
+        <Card>
+          <SkeletonTable rows={6} />
+        </Card>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<Users className="h-8 w-8" />}
+          title="No employees found"
+          description={search ? "Try adjusting your search or filters" : "Get started by adding your first employee"}
+          action={
+            !search
+              ? { label: "Add Employee", onClick: () => router.push("/dashboard/people/new") }
+              : undefined
+          }
+        />
+      ) : view === "table" ? (
+        <Card className="overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="w-12" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginated.map((emp) => (
+                <TableRow key={emp.id}>
+                  <TableCell>
+                    <Link
+                      href={`/dashboard/people/${emp.id}`}
+                      className="flex items-center gap-2.5"
+                    >
+                      <Avatar name={emp.name} src={emp.avatar} size="sm" />
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{emp.name}</p>
+                        <RoleBadge role={emp.role} />
+                      </div>
+                    </Link>
+                  </TableCell>
+                  <TableCell>{emp.title || "—"}</TableCell>
+                  <TableCell>
+                    {emp.department ? (
+                      <Badge variant="department">{emp.department.name}</Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={emp.status} />
+                  </TableCell>
+                  <TableCell className="text-slate-500">{emp.email}</TableCell>
+                  <TableCell>
+                    <DropdownMenu
+                      trigger={
+                        <button className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      }
+                    >
+                      <DropdownItem
+                        icon={<Eye className="h-3.5 w-3.5" />}
+                        onClick={() => router.push(`/dashboard/people/${emp.id}`)}
+                      >
+                        View Profile
+                      </DropdownItem>
+                      <DropdownItem icon={<Pencil className="h-3.5 w-3.5" />}>
+                        Edit
+                      </DropdownItem>
+                      <DropdownItem icon={<Mail className="h-3.5 w-3.5" />}>
+                        Send Email
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          )}
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {paginated.map((emp) => (
+              <Link key={emp.id} href={`/dashboard/people/${emp.id}`}>
+                <Card className="p-4 transition-shadow hover:shadow-md">
+                  <div className="flex flex-col items-center text-center">
+                    <Avatar name={emp.name} src={emp.avatar} size="lg" />
+                    <p className="mt-3 font-medium text-slate-900 dark:text-slate-100">{emp.name}</p>
+                    <p className="text-xs text-slate-500">{emp.title || "No title"}</p>
+                    {emp.department && (
+                      <Badge variant="department" className="mt-2">{emp.department.name}</Badge>
+                    )}
+                    <StatusBadge status={emp.status} />
+                  </div>
+                </Card>
+              </Link>
             ))}
           </div>
-        ) : employees.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="No employees found"
-            description={search || filterDept || filterRole || filterStatus
-              ? "Try adjusting your search or filters."
-              : "Get started by adding your first employee."}
-            action={
-              !search && !filterDept && !filterRole && !filterStatus ? (
-                <Link href="/dashboard/people/new">
-                  <Button>
-                    <Plus className="h-4 w-4" />
-                    Add Employee
-                  </Button>
-                </Link>
-              ) : undefined
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800">
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Employee
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Department
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Contact
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {employees.map((emp) => (
-                  <tr
-                    key={emp.id}
-                    className="group transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/dashboard/people/${emp.id}`}
-                        className="flex items-center gap-3"
-                      >
-                        <Avatar name={emp.name} src={emp.avatar} size="sm" />
-                        <div>
-                          <p className="text-sm font-medium text-slate-900 group-hover:text-teal-600 dark:text-white dark:group-hover:text-teal-400 transition-colors">
-                            {emp.name}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {emp.email}
-                          </p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", roleColors[emp.role as Role] || roleColors.EMPLOYEE)}>
-                        {emp.title || emp.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600 dark:text-slate-300">
-                        {emp.department?.name || "—"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", statusColors[emp.status as EmployeeStatus] || statusColors.ACTIVE)}>
-                        {statusLabels[emp.status as EmployeeStatus] || emp.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-500 dark:text-slate-400">
-                        {emp.phone || "—"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+          {totalPages > 1 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }

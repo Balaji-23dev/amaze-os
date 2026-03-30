@@ -7,23 +7,30 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String     @unique
   password     String
   avatar       String?
   phone        String?
-  role         String   @default("EMPLOYEE")
+  role         String     @default("EMPLOYEE")
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
   title        String?
   startDate    DateTime?
-  status       String   @default("ACTIVE")
+  status       String     @default("ACTIVE")
+  dateOfBirth  DateTime?
+  address      String?
+  employeeId   String?    @unique
+  employmentType String?  @default("FULL_TIME")
   managerId    String?
-  manager      User?    @relation("ManagerRelation", fields: [managerId], references: [id])
-  reports      User[]   @relation("ManagerRelation")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  manager      User?      @relation("ManagerRelation", fields: [managerId], references: [id])
+  reports      User[]     @relation("ManagerRelation")
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  emergencyContactRelation String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 model Department {
@@ -31,6 +38,7 @@ model Department {
   name        String   @unique
   description String?
   color       String?
+  icon        String?
   members     User[]
   createdAt   DateTime @default(now())
 }

@@ -3,117 +3,189 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  Inbox,
   Users,
   Building2,
-  CalendarCheck,
-  CalendarOff,
+  Network,
+  Briefcase,
   Settings,
   ChevronLeft,
-  Zap,
+  LogOut,
+  User,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownItem, DropdownSeparator } from "@/components/ui/dropdown-menu";
+import { Tooltip } from "@/components/ui/tooltip";
 
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "People", href: "/dashboard/people", icon: Users },
-  { name: "Departments", href: "/dashboard/departments", icon: Building2 },
-  { name: "Attendance", href: "/dashboard/attendance", icon: CalendarCheck },
-  { name: "Leave", href: "/dashboard/leave", icon: CalendarOff },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+}
+
+const mainNav: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Inbox", href: "/dashboard/inbox", icon: <Inbox className="h-4 w-4" /> },
 ];
 
+const peopleNav: NavItem[] = [
+  { label: "Directory", href: "/dashboard/people", icon: <Users className="h-4 w-4" /> },
+  { label: "Departments", href: "/dashboard/departments", icon: <Building2 className="h-4 w-4" /> },
+  { label: "Org Chart", href: "/dashboard/org-chart", icon: <Network className="h-4 w-4" /> },
+];
+
+const operationsNav: NavItem[] = [
+  { label: "Operations", href: "/dashboard/operations", icon: <Briefcase className="h-4 w-4" /> },
+];
+
+const settingsNav: NavItem[] = [
+  { label: "Settings", href: "/dashboard/settings", icon: <Settings className="h-4 w-4" /> },
+];
+
+function NavSection({
+  title,
+  items,
+  collapsed,
+  pathname,
+}: {
+  title: string;
+  items: NavItem[];
+  collapsed: boolean;
+  pathname: string;
+}) {
+  return (
+    <div className="mb-1">
+      {!collapsed && (
+        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+          {title}
+        </p>
+      )}
+      {items.map((item) => {
+        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+        const link = (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
+              collapsed && "justify-center px-2"
+            )}
+            aria-current={isActive ? "page" : undefined}
+          >
+            {item.icon}
+            {!collapsed && <span>{item.label}</span>}
+          </Link>
+        );
+
+        if (collapsed) {
+          return (
+            <Tooltip key={item.href} content={item.label} side="top">
+              {link}
+            </Tooltip>
+          );
+        }
+        return link;
+      })}
+    </div>
+  );
+}
+
 export function Sidebar() {
-  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
 
   return (
-    <>
-      {/* Mobile overlay */}
-      <div
-        className={cn(
-          "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity duration-300",
-          "pointer-events-none opacity-0"
-        )}
-      />
-
-      <aside
-        className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-950",
-          collapsed ? "w-[72px]" : "w-64"
-        )}
-      >
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-navy-600 to-teal-500">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-base font-bold text-slate-900 dark:text-white truncate">
-                AmazOS
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                People Platform
-              </span>
+    <aside
+      className={cn(
+        "flex h-screen flex-col border-r border-slate-200 bg-white transition-all duration-200 dark:border-slate-800 dark:bg-slate-950",
+        collapsed ? "w-16" : "w-56"
+      )}
+    >
+      {/* Logo */}
+      <div className={cn("flex h-14 items-center border-b border-slate-200 dark:border-slate-800", collapsed ? "justify-center px-2" : "justify-between px-4")}>
+        {!collapsed && (
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-xs font-bold text-white">
+              A
             </div>
+            <span className="text-sm font-bold text-slate-900 dark:text-slate-100">AmazOS</span>
+          </Link>
+        )}
+        {collapsed && (
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-xs font-bold text-white">
+            A
+          </div>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300",
+            collapsed && "hidden"
           )}
-        </div>
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
+      </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href));
-            const Icon = item.icon;
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+        <NavSection title="Main" items={mainNav} collapsed={collapsed} pathname={pathname} />
+        <NavSection title="People" items={peopleNav} collapsed={collapsed} pathname={pathname} />
+        <NavSection title="Operations" items={operationsNav} collapsed={collapsed} pathname={pathname} />
+        <NavSection title="System" items={settingsNav} collapsed={collapsed} pathname={pathname} />
+      </nav>
 
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-navy-50 text-navy-700 dark:bg-teal-500/10 dark:text-teal-400"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                )}
-                title={collapsed ? item.name : undefined}
-              >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 shrink-0 transition-colors",
-                    isActive
-                      ? "text-navy-600 dark:text-teal-400"
-                      : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300"
-                  )}
-                />
-                {!collapsed && <span className="truncate">{item.name}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Collapse toggle */}
-        <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+      {/* Expand button (when collapsed) */}
+      {collapsed && (
+        <div className="flex justify-center px-2 py-2">
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex w-full items-center justify-center rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setCollapsed(false)}
+            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+            aria-label="Expand sidebar"
           >
-            <ChevronLeft
-              className={cn(
-                "h-5 w-5 transition-transform duration-300",
-                collapsed && "rotate-180"
-              )}
-            />
+            <PanelLeft className="h-4 w-4" />
           </button>
         </div>
-      </aside>
+      )}
 
-      {/* Spacer to push main content */}
-      <div className={cn("shrink-0 transition-all duration-300", collapsed ? "w-[72px]" : "w-64")} />
-    </>
+      {/* User */}
+      <div className="border-t border-slate-200 p-2 dark:border-slate-800">
+        <DropdownMenu
+          align="left"
+          trigger={
+            <button
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-md p-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800",
+                collapsed && "justify-center"
+              )}
+            >
+              <Avatar name="Basha" size="sm" status="online" />
+              {!collapsed && (
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">Basha</p>
+                  <p className="truncate text-xs text-slate-500">Admin</p>
+                </div>
+              )}
+            </button>
+          }
+        >
+          <DropdownItem icon={<User className="h-4 w-4" />}>Profile</DropdownItem>
+          <DropdownItem icon={<Settings className="h-4 w-4" />}>Settings</DropdownItem>
+          <DropdownSeparator />
+          <DropdownItem icon={<LogOut className="h-4 w-4" />} destructive>
+            Sign out
+          </DropdownItem>
+        </DropdownMenu>
+      </div>
+    </aside>
   );
 }

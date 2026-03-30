@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 export async function GET(
   _request: NextRequest,
@@ -7,36 +7,33 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-
     const employee = await prisma.user.findUnique({
       where: { id },
       include: {
-        department: { select: { id: true, name: true } },
-        manager: { select: { id: true, name: true } },
+        department: {
+          select: { id: true, name: true, color: true },
+        },
+        manager: {
+          select: { id: true, name: true },
+        },
         reports: {
-          select: { id: true, name: true, avatar: true, title: true, role: true },
+          select: { id: true, name: true, title: true },
         },
       },
     });
 
     if (!employee) {
-      return NextResponse.json(
-        { error: "Employee not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ employee });
+    return NextResponse.json(employee);
   } catch (error) {
     console.error("GET /api/employees/[id] error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch employee" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch employee" }, { status: 500 });
   }
 }
 
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -47,28 +44,32 @@ export async function PATCH(
     const employee = await prisma.user.update({
       where: { id },
       data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.email !== undefined && { email: body.email }),
-        ...(body.phone !== undefined && { phone: body.phone }),
-        ...(body.departmentId !== undefined && { departmentId: body.departmentId }),
-        ...(body.role !== undefined && { role: body.role }),
-        ...(body.title !== undefined && { title: body.title }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.startDate !== undefined && { startDate: body.startDate ? new Date(body.startDate) : null }),
-        ...(body.managerId !== undefined && { managerId: body.managerId || null }),
+        name: body.name,
+        email: body.email,
+        phone: body.phone,
+        title: body.title,
+        role: body.role,
+        status: body.status,
+        departmentId: body.departmentId,
+        managerId: body.managerId,
+        dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : undefined,
+        address: body.address,
+        employmentType: body.employmentType,
+        emergencyContactName: body.emergencyContactName,
+        emergencyContactPhone: body.emergencyContactPhone,
+        emergencyContactRelation: body.emergencyContactRelation,
       },
       include: {
-        department: { select: { id: true, name: true } },
+        department: {
+          select: { id: true, name: true, color: true },
+        },
       },
     });
 
-    return NextResponse.json({ employee });
+    return NextResponse.json(employee);
   } catch (error) {
-    console.error("PATCH /api/employees/[id] error:", error);
-    return NextResponse.json(
-      { error: "Failed to update employee" },
-      { status: 500 }
-    );
+    console.error("PUT /api/employees/[id] error:", error);
+    return NextResponse.json({ error: "Failed to update employee" }, { status: 500 });
   }
 }
 
@@ -78,15 +79,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-
     await prisma.user.delete({ where: { id } });
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/employees/[id] error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete employee" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to delete employee" }, { status: 500 });
   }
 }

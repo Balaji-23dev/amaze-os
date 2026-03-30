@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { hash } from "bcryptjs";
+import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const departmentId = searchParams.get("departmentId") || "";
-    const role = searchParams.get("role") || "";
-    const status = searchParams.get("status") || "";
+    const search = searchParams.get("search");
+    const departmentId = searchParams.get("departmentId");
+    const status = searchParams.get("status");
+    const role = searchParams.get("role");
 
     const where: Record<string, unknown> = {};
 
@@ -16,16 +16,19 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { name: { contains: search } },
         { email: { contains: search } },
+        { title: { contains: search } },
       ];
     }
     if (departmentId) where.departmentId = departmentId;
-    if (role) where.role = role;
     if (status) where.status = status;
+    if (role) where.role = role;
 
     const employees = await prisma.user.findMany({
       where,
       include: {
-        department: { select: { id: true, name: true } },
+        department: {
+          select: { id: true, name: true, color: true },
+        },
       },
       orderBy: { name: "asc" },
     });
@@ -33,59 +36,54 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ employees });
   } catch (error) {
     console.error("GET /api/employees error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch employees" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch employees" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, departmentId, role, title, startDate, managerId, password } = body;
+    const { name, email, phone, departmentId, title, role, startDate, managerId } = body;
 
-    if (!name || !email || !departmentId) {
-      return NextResponse.json(
-        { error: "Name, email, and department are required" },
-        { status: 400 }
-      );
+    if (!name || !email || !title) {
+      return NextResponse.json({ error: "Name, email, and title are required" }, { status: 400 });
     }
 
-    // Check if email already exists
+    // Check for existing email
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json(
-        { error: "An employee with this email already exists" },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "Email already exists" }, { status: 409 });
     }
 
-    const hashedPassword = await hash(password || "welcome123", 12);
+    // Generate employee ID
+    const count = await prisma.user.count();
+    const employeeId = `AMZ-${String(count + 1).padStart(4, "0")}`;
+
+    const hashedPassword = await bcrypt.hash("welcome123", 10);
 
     const employee = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        phone: phone || null,
+        phone,
         departmentId,
+        title,
         role: role || "EMPLOYEE",
-        title: title || null,
-        startDate: startDate ? new Date(startDate) : null,
-        managerId: managerId || null,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        managerId,
+        employeeId,
       },
       include: {
-        department: { select: { id: true, name: true } },
+        department: {
+          select: { id: true, name: true, color: true },
+        },
       },
     });
 
-    return NextResponse.json({ employee }, { status: 201 });
+    return NextResponse.json(employee, { status: 201 });
   } catch (error) {
     console.error("POST /api/employees error:", error);
-    return NextResponse.json(
-      { error: "Failed to create employee" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create employee" }, { status: 500 });
   }
 }

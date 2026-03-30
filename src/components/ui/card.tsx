@@ -1,37 +1,57 @@
 import { cn } from "@/lib/utils";
 
-interface CardProps {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  className?: string;
-  hover?: boolean;
-  onClick?: () => void;
 }
 
-export function Card({ children, className, hover, onClick }: CardProps) {
+export function Card({ className, children, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900",
-        hover && "cursor-pointer transition-all duration-200 hover:border-slate-300 hover:shadow-md dark:hover:border-slate-700",
+        "rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900",
         className
       )}
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      {...props}
     >
       {children}
     </div>
   );
 }
 
-export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("mb-4", className)}>{children}</div>;
+export function CardHeader({ className, children, ...props }: CardProps) {
+  return (
+    <div
+      className={cn("flex items-center justify-between border-b border-slate-200 px-5 py-3.5 dark:border-slate-800", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }
 
-export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <h3 className={cn("text-lg font-semibold text-slate-900 dark:text-white", className)}>{children}</h3>;
+export function CardTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h3 className={cn("text-sm font-semibold text-slate-900 dark:text-slate-100", className)} {...props}>
+      {children}
+    </h3>
+  );
 }
 
-export function CardDescription({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <p className={cn("text-sm text-slate-500 dark:text-slate-400", className)}>{children}</p>;
+export function CardBody({ className, children, ...props }: CardProps) {
+  return (
+    <div className={cn("px-5 py-4", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
+export function CardFooter({ className, children, ...props }: CardProps) {
+  return (
+    <div
+      className={cn("flex items-center border-t border-slate-200 px-5 py-3 dark:border-slate-800", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }
