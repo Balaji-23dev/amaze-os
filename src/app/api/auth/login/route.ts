@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import bcrypt from "bcryptjs";
+
+// Demo credentials
+const DEMO_PASSWORDS: Record<string, string> = {
+  "basha@amazetech.net": "admin123",
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,13 +25,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
+    // Demo: check known passwords, or default "welcome123" for employees
+    const expectedPassword = DEMO_PASSWORDS[email] || "welcome123";
+    if (password !== expectedPassword) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    // In a real app we'd set a session/JWT cookie here
-    // For now, just return success
     return NextResponse.json({
       user: {
         id: user.id,
